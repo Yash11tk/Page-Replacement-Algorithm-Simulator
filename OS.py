@@ -1,11 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
 import random
-
 
 class PageReplacementSimulator:
     def __init__(self, root):
@@ -44,14 +41,19 @@ class PageReplacementSimulator:
         self.algo_choice.set("FIFO")
         self.algo_choice.grid(row=0, column=1, padx=10, pady=5)
 
+        ttk.Label(control_frame, text="Number of Frames:").grid(row=1, column=0, padx=10, pady=5, sticky=tk.W)
+        self.frame_input = ttk.Entry(control_frame, width=10)
+        self.frame_input.insert(0, "3")
+        self.frame_input.grid(row=1, column=1, padx=10, pady=5, sticky=tk.W)
+
         ttk.Label(control_frame, text="Page References (comma-separated):").grid(
-            row=1, column=0, padx=10, pady=5, sticky=tk.W)
+            row=2, column=0, padx=10, pady=5, sticky=tk.W)
         self.page_input = ttk.Entry(control_frame, width=30)
         self.page_input.insert(0, ",".join(map(str, self.pages)))
-        self.page_input.grid(row=1, column=1, padx=10, pady=5)
+        self.page_input.grid(row=2, column=1, padx=10, pady=5)
 
         btn_frame = ttk.Frame(control_frame)
-        btn_frame.grid(row=2, column=0, columnspan=2, pady=10)
+        btn_frame.grid(row=3, column=0, columnspan=2, pady=10)
 
         self.run_button = ttk.Button(btn_frame, text="Run Simulation", command=self.run_simulation)
         self.run_button.pack(side=tk.LEFT, padx=5)
@@ -60,7 +62,7 @@ class PageReplacementSimulator:
         self.reset_button.pack(side=tk.LEFT, padx=5)
 
         self.page_fault_label = ttk.Label(control_frame, text="Page Faults: 0")
-        self.page_fault_label.grid(row=3, column=0, columnspan=2)
+        self.page_fault_label.grid(row=4, column=0, columnspan=2)
 
         graph_frame = ttk.Frame(self.root)
         graph_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
@@ -150,6 +152,13 @@ class PageReplacementSimulator:
 
     def run_simulation(self):
         algo = self.algo_choice.get()
+
+        try:
+            self.frames = int(self.frame_input.get())
+        except:
+            messagebox.showerror("Invalid Input", "Please enter a valid number of frames.")
+            return
+
         try:
             self.pages = list(map(int, self.page_input.get().strip().split(',')))
         except:
@@ -211,7 +220,6 @@ class PageReplacementSimulator:
         self.ax.clear()
         self.canvas.draw()
         self.run_button.state(["!disabled"])
-
 
 if __name__ == "__main__":
     root = tk.Tk()

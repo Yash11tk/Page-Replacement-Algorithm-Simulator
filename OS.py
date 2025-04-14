@@ -1,8 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 import random
+
 
 class PageReplacementSimulator:
     def __init__(self, root):
@@ -41,16 +44,16 @@ class PageReplacementSimulator:
         self.algo_choice.set("FIFO")
         self.algo_choice.grid(row=0, column=1, padx=10, pady=5)
 
-        ttk.Label(control_frame, text="Number of Frames:").grid(row=1, column=0, padx=10, pady=5, sticky=tk.W)
-        self.frame_input = ttk.Entry(control_frame, width=10)
-        self.frame_input.insert(0, "3")
-        self.frame_input.grid(row=1, column=1, padx=10, pady=5, sticky=tk.W)
-
         ttk.Label(control_frame, text="Page References (comma-separated):").grid(
-            row=2, column=0, padx=10, pady=5, sticky=tk.W)
+            row=1, column=0, padx=10, pady=5, sticky=tk.W)
         self.page_input = ttk.Entry(control_frame, width=30)
         self.page_input.insert(0, ",".join(map(str, self.pages)))
-        self.page_input.grid(row=2, column=1, padx=10, pady=5)
+        self.page_input.grid(row=1, column=1, padx=10, pady=5)
+
+        ttk.Label(control_frame, text="Number of Frames:").grid(row=2, column=0, padx=10, pady=5, sticky=tk.W)
+        self.frame_input = ttk.Entry(control_frame, width=10)
+        self.frame_input.insert(0, str(self.frames))
+        self.frame_input.grid(row=2, column=1, padx=10, pady=5)
 
         btn_frame = ttk.Frame(control_frame)
         btn_frame.grid(row=3, column=0, columnspan=2, pady=10)
@@ -152,17 +155,13 @@ class PageReplacementSimulator:
 
     def run_simulation(self):
         algo = self.algo_choice.get()
-
-        try:
-            self.frames = int(self.frame_input.get())
-        except:
-            messagebox.showerror("Invalid Input", "Please enter a valid number of frames.")
-            return
-
         try:
             self.pages = list(map(int, self.page_input.get().strip().split(',')))
+            self.frames = int(self.frame_input.get())
+            if self.frames <= 0:
+                raise ValueError
         except:
-            messagebox.showerror("Invalid Input", "Please enter valid comma-separated numbers.")
+            messagebox.showerror("Invalid Input", "Please enter valid values for pages and number of frames.")
             return
 
         self.current_frame = 0
@@ -190,10 +189,7 @@ class PageReplacementSimulator:
 
         if self.current_frame < len(self.history):
             frame = self.history[self.current_frame]
-            if self.current_frame in self.page_fault_indices:
-                colors = ['red'] * len(frame)
-            else:
-                colors = ['#5e60ce'] * len(frame)
+            colors = ['red' if self.current_frame in self.page_fault_indices else '#5e60ce'] * len(frame)
             self.ax.bar(range(len(frame)), frame, color=colors)
             self.ax.set_ylim(0, max(self.pages) + 1)
 
@@ -220,6 +216,7 @@ class PageReplacementSimulator:
         self.ax.clear()
         self.canvas.draw()
         self.run_button.state(["!disabled"])
+
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -189,9 +189,14 @@ class PageReplacementSimulator:
 
         if self.current_frame < len(self.history):
             frame = self.history[self.current_frame]
-            colors = ['red' if self.current_frame in self.page_fault_indices else '#5e60ce'] * len(frame)
-            self.ax.bar(range(len(frame)), frame, color=colors)
-            self.ax.set_ylim(0, max(self.pages) + 1)
+            is_fault = self.current_frame in self.page_fault_indices
+            color = ['red' if is_fault else '#5e60ce'] * len(frame)
+            bars = self.ax.bar(range(len(frame)), frame, color=color)
+            self.ax.set_ylim(0, max(self.pages) + 2)
+
+            # Annotate each bar with the page number
+            for idx, val in enumerate(frame):
+                self.ax.text(idx, val + 0.1, str(val), ha='center', va='bottom', color='white')
 
         self.step_info.config(text=f"Step: {self.current_frame + 1} / {len(self.history)}")
         self.canvas.draw()

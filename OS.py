@@ -11,7 +11,7 @@ class PageReplacementSimulator:
     def __init__(self, root):
         self.root = root
         self.root.title("Page Replacement Simulator")
-        self.root.geometry("900x700")
+        self.root.geometry("950x750")
         self.root.configure(bg="#1e1e2f")
 
         self.frames = 3
@@ -85,6 +85,10 @@ class PageReplacementSimulator:
 
         self.step_info = ttk.Label(nav_frame, text="Step: 0 / 0")
         self.step_info.pack(side=tk.LEFT, padx=10)
+
+        # Step explanation label
+        self.step_explanation = ttk.Label(nav_frame, text="", font=("Segoe UI", 10))
+        self.step_explanation.pack(side=tk.LEFT, padx=10)
 
     def fifo_algorithm(self):
         queue = []
@@ -194,9 +198,14 @@ class PageReplacementSimulator:
             bars = self.ax.bar(range(len(frame)), frame, color=color)
             self.ax.set_ylim(0, max(self.pages) + 2)
 
-            # Annotate each bar with the page number
             for idx, val in enumerate(frame):
                 self.ax.text(idx, val + 0.1, str(val), ha='center', va='bottom', color='white')
+
+            current_page = self.pages[self.current_frame]
+            fault_text = "Page Fault" if is_fault else "No Page Fault"
+            self.step_explanation.config(
+                text=f"Page Requested: {current_page} → {fault_text}"
+            )
 
         self.step_info.config(text=f"Step: {self.current_frame + 1} / {len(self.history)}")
         self.canvas.draw()
@@ -218,6 +227,7 @@ class PageReplacementSimulator:
         self.page_fault_indices = []
         self.page_fault_label.config(text="Page Faults: 0")
         self.step_info.config(text="Step: 0 / 0")
+        self.step_explanation.config(text="")
         self.ax.clear()
         self.canvas.draw()
         self.run_button.state(["!disabled"])

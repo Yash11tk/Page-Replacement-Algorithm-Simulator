@@ -1,237 +1,170 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-import random
-
 
 class PageReplacementSimulator:
     def __init__(self, root):
         self.root = root
-        self.root.title("Page Replacement Simulator")
-        self.root.geometry("950x750")
-        self.root.configure(bg="#1e1e2f")
+        self.root.title("Page Replacement Algorithm Simulator")
+        self.root.geometry("800x600")
 
+        self.algorithm = tk.StringVar(value="FIFO")
         self.frames = 3
-        self.pages = [random.randint(1, 5) for _ in range(10)]
-        self.current_frame = 0
+        self.page_sequence = []
         self.history = []
-        self.page_fault_indices = []
-        self.page_faults = 0
 
-        self.setup_styles()
-        self.build_ui()
+        self.setup_ui()
 
-    def setup_styles(self):
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure("TFrame", background="#1e1e2f")
-        style.configure("TLabel", background="#1e1e2f", foreground="white", font=("Segoe UI", 12))
-        style.configure("TButton", background="#5e60ce", foreground="white", font=("Segoe UI", 11), padding=8)
-        style.map("TButton", background=[("active", "#7b7efb")])
-        style.configure("TCombobox", font=("Segoe UI", 11), padding=4)
-        style.map("TCombobox", fieldbackground=[("readonly", "#27293d")],
-                   foreground=[("readonly", "white")])
+    def setup_ui(self):
+        # Control Frame
+        control_frame = ttk.LabelFrame(self.root, text="Controls")
+        control_frame.pack(fill=tk.X, padx=10, pady=10)
 
-    def build_ui(self):
-        control_frame = ttk.Frame(self.root, padding=20)
-        control_frame.pack(fill=tk.X)
+        # Algorithm Selection
+        ttk.Label(control_frame, text="Algorithm:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        algo_menu = ttk.Combobox(control_frame, textvariable=self.algorithm, values=["FIFO", "LRU", "Optimal"], state="readonly")
+        algo_menu.grid(row=0, column=1, padx=5, pady=5)
 
-        ttk.Label(control_frame, text="Select Algorithm:").grid(row=0, column=0, padx=10, pady=5, sticky=tk.W)
-        self.algo_choice = ttk.Combobox(control_frame, values=["FIFO", "LRU", "Optimal"], state="readonly")
-        self.algo_choice.set("FIFO")
-        self.algo_choice.grid(row=0, column=1, padx=10, pady=5)
-
-        ttk.Label(control_frame, text="Page References (comma-separated):").grid(
-            row=1, column=0, padx=10, pady=5, sticky=tk.W)
-        self.page_input = ttk.Entry(control_frame, width=30)
-        self.page_input.insert(0, ",".join(map(str, self.pages)))
-        self.page_input.grid(row=1, column=1, padx=10, pady=5)
-
-        ttk.Label(control_frame, text="Number of Frames:").grid(row=2, column=0, padx=10, pady=5, sticky=tk.W)
+        # Number of Frames
+        ttk.Label(control_frame, text="Number of Frames:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
         self.frame_input = ttk.Entry(control_frame, width=10)
         self.frame_input.insert(0, str(self.frames))
-        self.frame_input.grid(row=2, column=1, padx=10, pady=5)
+        self.frame_input.grid(row=1, column=1, padx=5, pady=5)
 
-        btn_frame = ttk.Frame(control_frame)
-        btn_frame.grid(row=3, column=0, columnspan=2, pady=10)
+        # Page Sequence
+        ttk.Label(control_frame, text="Page Sequence (space-separated):").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        self.sequence_input = ttk.Entry(control_frame, width=50)
+        self.sequence_input.grid(row=2, column=1, padx=5, pady=5)
 
-        self.run_button = ttk.Button(btn_frame, text="Run Simulation", command=self.run_simulation)
-        self.run_button.pack(side=tk.LEFT, padx=5)
+        # Run Button
+        run_button = ttk.Button(control_frame, text="Run Simulation", command=self.run_simulation)
+        run_button.grid(row=3, column=0, columnspan=2, pady=10)
 
-        self.reset_button = ttk.Button(btn_frame, text="Reset", command=self.reset_simulation)
-        self.reset_button.pack(side=tk.LEFT, padx=5)
+        # Output Frame
+        output_frame = ttk.LabelFrame(self.root, text="Simulation Output")
+        output_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.page_fault_label = ttk.Label(control_frame, text="Page Faults: 0")
-        self.page_fault_label.grid(row=4, column=0, columnspan=2)
-
-        graph_frame = ttk.Frame(self.root)
-        graph_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
-
-        self.fig, self.ax = plt.subplots(facecolor='#1e1e2f')
-        self.canvas = FigureCanvasTkAgg(self.fig, master=graph_frame)
+        # Matplotlib Figure
+        self.figure, self.ax = plt.subplots(figsize=(8, 4))
+        self.canvas = FigureCanvasTkAgg(self.figure, master=output_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        nav_frame = ttk.Frame(self.root)
-        nav_frame.pack(pady=5)
-
-        self.prev_btn = ttk.Button(nav_frame, text="Previous", command=self.prev_frame)
-        self.prev_btn.pack(side=tk.LEFT, padx=5)
-
-        self.next_btn = ttk.Button(nav_frame, text="Next", command=self.next_frame)
-        self.next_btn.pack(side=tk.LEFT, padx=5)
-
-        self.step_info = ttk.Label(nav_frame, text="Step: 0 / 0")
-        self.step_info.pack(side=tk.LEFT, padx=10)
-
-        # Step explanation label
-        self.step_explanation = ttk.Label(nav_frame, text="", font=("Segoe UI", 10))
-        self.step_explanation.pack(side=tk.LEFT, padx=10)
-
-    def fifo_algorithm(self):
-        queue = []
-        page_faults = 0
-        history = []
-        fault_indices = []
-
-        for i, page in enumerate(self.pages):
-            if page not in queue:
-                if len(queue) < self.frames:
-                    queue.append(page)
-                else:
-                    queue.pop(0)
-                    queue.append(page)
-                page_faults += 1
-                fault_indices.append(i)
-            history.append(queue.copy())
-
-        self.page_fault_indices = fault_indices
-        return history, page_faults
-
-    def lru_algorithm(self):
-        queue = []
-        recent = {}
-        page_faults = 0
-        history = []
-        fault_indices = []
-
-        for i, page in enumerate(self.pages):
-            if page in queue:
-                recent[page] = i
-            else:
-                if len(queue) < self.frames:
-                    queue.append(page)
-                else:
-                    lru_page = min(queue, key=lambda x: recent.get(x, -1))
-                    queue[queue.index(lru_page)] = page
-                recent[page] = i
-                page_faults += 1
-                fault_indices.append(i)
-            history.append(queue.copy())
-
-        self.page_fault_indices = fault_indices
-        return history, page_faults
-
-    def optimal_algorithm(self):
-        queue = []
-        page_faults = 0
-        history = []
-        fault_indices = []
-
-        for i in range(len(self.pages)):
-            page = self.pages[i]
-            if page not in queue:
-                if len(queue) < self.frames:
-                    queue.append(page)
-                else:
-                    future = self.pages[i+1:]
-                    indices = [(future.index(p) if p in future else float('inf')) for p in queue]
-                    farthest = indices.index(max(indices))
-                    queue[farthest] = page
-                page_faults += 1
-                fault_indices.append(i)
-            history.append(queue.copy())
-
-        self.page_fault_indices = fault_indices
-        return history, page_faults
+        # Step Explanation
+        self.step_explanation = ttk.Label(self.root, text="", font=("Segoe UI", 10))
+        self.step_explanation.pack(pady=5)
 
     def run_simulation(self):
-        algo = self.algo_choice.get()
+        # Clear previous output
+        self.ax.clear()
+        self.step_explanation.config(text="")
+        self.history.clear()
+
+        # Get user inputs
         try:
-            self.pages = list(map(int, self.page_input.get().strip().split(',')))
             self.frames = int(self.frame_input.get())
             if self.frames <= 0:
                 raise ValueError
-        except:
-            messagebox.showerror("Invalid Input", "Please enter valid values for pages and number of frames.")
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Number of frames must be a positive integer.")
             return
 
-        self.current_frame = 0
-        self.run_button.state(["disabled"])
+        sequence_str = self.sequence_input.get().strip()
+        if not sequence_str:
+            messagebox.showerror("Invalid Input", "Please enter a page sequence.")
+            return
 
+        try:
+            self.page_sequence = list(map(int, sequence_str.split()))
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Page sequence must contain integers separated by spaces.")
+            return
+
+        # Run selected algorithm
+        algo = self.algorithm.get()
         if algo == "FIFO":
-            self.history, self.page_faults = self.fifo_algorithm()
+            self.simulate_fifo()
         elif algo == "LRU":
-            self.history, self.page_faults = self.lru_algorithm()
+            self.simulate_lru()
         elif algo == "Optimal":
-            self.history, self.page_faults = self.optimal_algorithm()
+            self.simulate_optimal()
         else:
+            messagebox.showerror("Invalid Algorithm", f"Algorithm '{algo}' is not supported.")
             return
 
-        self.page_fault_label.config(text=f"Page Faults: {self.page_faults}")
-        self.update_frame_display()
+        # Display results
+        self.display_results()
 
-    def update_frame_display(self):
-        self.ax.clear()
-        self.ax.set_facecolor('#1e1e2f')
-        self.ax.set_title(f"{self.algo_choice.get()} Algorithm", fontsize=14, color='white')
-        self.ax.set_xlabel("Frame Slot", color="white")
-        self.ax.set_ylabel("Page Number", color="white")
-        self.ax.tick_params(colors='white')
+    def simulate_fifo(self):
+        frame = []
+        page_faults = 0
+        for page in self.page_sequence:
+            if page not in frame:
+                if len(frame) < self.frames:
+                    frame.append(page)
+                else:
+                    frame.pop(0)
+                    frame.append(page)
+                page_faults += 1
+            self.history.append(list(frame))
+        self.step_explanation.config(text=f"FIFO Algorithm: {page_faults} page faults.")
 
-        if self.current_frame < len(self.history):
-            frame = self.history[self.current_frame]
-            is_fault = self.current_frame in self.page_fault_indices
-            color = ['red' if is_fault else '#5e60ce'] * len(frame)
-            bars = self.ax.bar(range(len(frame)), frame, color=color)
-            self.ax.set_ylim(0, max(self.pages) + 2)
+    def simulate_lru(self):
+        frame = []
+        recent_usage = []
+        page_faults = 0
+        for page in self.page_sequence:
+            if page in frame:
+                recent_usage.remove(page)
+                recent_usage.append(page)
+            else:
+                if len(frame) < self.frames:
+                    frame.append(page)
+                else:
+                    lru_page = recent_usage.pop(0)
+                    frame[frame.index(lru_page)] = page
+                recent_usage.append(page)
+                page_faults += 1
+            self.history.append(list(frame))
+        self.step_explanation.config(text=f"LRU Algorithm: {page_faults} page faults.")
 
+    def simulate_optimal(self):
+        frame = []
+        page_faults = 0
+        for i in range(len(self.page_sequence)):
+            page = self.page_sequence[i]
+            if page not in frame:
+                if len(frame) < self.frames:
+                    frame.append(page)
+                else:
+                    future_uses = []
+                    for f_page in frame:
+                        if f_page in self.page_sequence[i+1:]:
+                            future_uses.append(self.page_sequence[i+1:].index(f_page))
+                        else:
+                            future_uses.append(float('inf'))
+                    victim_index = future_uses.index(max(future_uses))
+                    frame[victim_index] = page
+                page_faults += 1
+            self.history.append(list(frame))
+        self.step_explanation.config(text=f"Optimal Algorithm: {page_faults} page faults.")
+
+    def display_results(self):
+        self.ax.set_title("Page Replacement Simulation")
+        self.ax.set_xlabel("Step")
+        self.ax.set_ylabel("Frame Content")
+
+        for step, frame in enumerate(self.history):
             for idx, val in enumerate(frame):
-                self.ax.text(idx, val + 0.1, str(val), ha='center', va='bottom', color='white')
+                self.ax.text(step, self.frames - idx - 1, str(val), ha='center', va='center', bbox=dict(facecolor='skyblue', edgecolor='black'))
 
-            current_page = self.pages[self.current_frame]
-            fault_text = "Page Fault" if is_fault else "No Page Fault"
-            self.step_explanation.config(
-                text=f"Page Requested: {current_page} → {fault_text}"
-            )
-
-        self.step_info.config(text=f"Step: {self.current_frame + 1} / {len(self.history)}")
+        self.ax.set_xticks(range(len(self.history)))
+        self.ax.set_yticks(range(self.frames))
+        self.ax.set_yticklabels([f"Frame {i+1}" for i in range(self.frames)][::-1])
+        self.ax.set_xlim(-1, len(self.history))
+        self.ax.set_ylim(-1, self.frames)
+        self.ax.grid(True)
         self.canvas.draw()
-        self.run_button.state(["!disabled"])
-
-    def next_frame(self):
-        if self.current_frame < len(self.history) - 1:
-            self.current_frame += 1
-            self.update_frame_display()
-
-    def prev_frame(self):
-        if self.current_frame > 0:
-            self.current_frame -= 1
-            self.update_frame_display()
-
-    def reset_simulation(self):
-        self.history = []
-        self.current_frame = 0
-        self.page_fault_indices = []
-        self.page_fault_label.config(text="Page Faults: 0")
-        self.step_info.config(text="Step: 0 / 0")
-        self.step_explanation.config(text="")
-        self.ax.clear()
-        self.canvas.draw()
-        self.run_button.state(["!disabled"])
-
 
 if __name__ == "__main__":
     root = tk.Tk()
